@@ -1,4 +1,5 @@
 import configparser
+from typing import Iterator
 
 import paramiko
 from scp import SCPClient
@@ -31,26 +32,37 @@ class Node:
             print(f"Node {self.host} does not have a valid secret")
             raise Exception()
 
-    def setup(self):
+    def setup(self, files: Iterator[Path]):
         print(f"Connecting to node {self.host}...")
-        ssh = self.connect()
+        self.connect()
+        
+        scp = SCPClient(self.ssh.get_transport())
+        # remote_path = f'/home/{self.username}/distributed_pipeline/'
+        scp.put(files)#, recursive=True, remote_path=remote_path)
 
-        scp = SCPClient(ssh.get_transport())
-        # ssh.scp
-        print("Success!\n")
+        scp.close()
+
+        print(f"Success! transferred {len(files)} files\n")
+
+    def remote_exec(self):
+
+        print("THIS IS WHERE WE ADD SOMETHING :)")
+        # stdin, stdout, stderr = selfssh.exec_command(f'ls {remote_path}/')
+
+        # lines = stdout.readlines()
+
+        # print(lines)
 
     def connect(self):
-        ssh = paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        ssh.load_system_host_keys()
+        self.ssh = paramiko.SSHClient()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        self.ssh.load_system_host_keys()
         
         if self.key == None and self.password == None:
-            ssh.connect(self.host,  self.ssh_port, self.username)
+            self.ssh.connect(self.host,  self.ssh_port, self.username)
         if self.key != None: # Connect to the host preferring keys over passwords
             key_path = Path(self.key)
             key = paramiko.RSAKey.from_private_key_file(key_path.expanduser())
-            ssh.connect(self.host,  self.ssh_port, self.username, pkey=key)
+            self.ssh.connect(self.host,  self.ssh_port, self.username, pkey=key)
         else:
-            ssh.connect(self.host,  self.ssh_port, self.username, self.password)
-
-        return ssh
+            self.ssh.connect(self.host,  self.ssh_port, self.username, self.password)

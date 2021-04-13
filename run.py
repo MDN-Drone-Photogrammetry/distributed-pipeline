@@ -1,11 +1,12 @@
-# stdin, stdout, stderr = ssh.exec_command(command)
 
-# lines = stdout.readlines()
+import os
+from pathlib import Path
+import subprocess
+from utils.file_utils import file_split, process_files
 
-# print(lines)
-import sys
+from utils.init_argparse import init_argparse
+from utils.utils import check_requirements, get_nodes, transfer_files
 
-from utils.utils import check_requirements, get_nodes, init_argparse
 
 if __name__ == '__main__':
     check_requirements()
@@ -14,14 +15,20 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if len(args.files) == 0:
-        print("No files provided, exiting...")
-        sys.exit()
-    
-    print(f"{len(args.files)} files provided, {args.files}")
-        
+    files = process_files(args.files)
+
     nodes = get_nodes()
 
+    paths = file_split(files, len(nodes))
+
+    transfer_files(files, nodes)
+
     for node in nodes:
-        node.setup()
-    print(nodes)
+        node.remote_exec()
+    
+    print("")
+
+    print("Cleaning up...")
+    for path in paths:
+        subprocess.run(["rm", "-r", path.parents[0]])
+    print("Done!")

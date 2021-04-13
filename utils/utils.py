@@ -1,9 +1,9 @@
-import argparse
 from pathlib import Path
 import subprocess
 import platform
 import socket
 import configparser
+from typing import Iterator
 from remote.node import Node
 import random
 import sys
@@ -88,7 +88,7 @@ def valid_address(netloc):
         return False
 
 
-def get_nodes():
+def get_nodes() -> Iterator[Node]:
     config = configparser.ConfigParser()
     config.read('config')
 
@@ -124,27 +124,13 @@ def is_tool(name):
     return which(name) is not None
 
 
-def init_argparse() -> argparse.ArgumentParser:
-
-    parser = argparse.ArgumentParser(
-
-        usage="%(prog)s [OPTION] [FILE]...",
-
-        description="A tool for pointcloud distributed pipelines. Accepts .ply or .laz as input, will split the files and perform remote processing on them."
-
-    )
-
-    parser.add_argument(
-
-        "-v", "--version", action="version",
-
-        version=f"{parser.prog} version 1.0.0"
-
-    )
-
-    parser.add_argument('files', nargs='*')
-    parser.add_argument('--config', default='config',
-                        help='Provide an alternative config file (default: config)')
-    parser.add_argument('--secret', default='secret',
-                        help='Provide an alternative secret file (default: secret)')
-    return parser
+def transfer_files(files, nodes):
+    for i in range(len(nodes)):
+        split_files = []
+        for file in files:
+            name_split = file.name.split('.')
+            new_name = f'{name_split[0]}_{i+1}.{name_split[1]}'
+            split_path = Path.joinpath(file.parents[0], 'split', new_name)
+            split_files.append(str(split_path.absolute()))
+        nodes[i] 
+        nodes[i].setup(split_files)
