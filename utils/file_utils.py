@@ -5,12 +5,11 @@ import subprocess
 import sys
 from typing import Iterator
 
+
 def process_files(args_files) -> Iterator[Path]:
     if len(args_files) == 0:
         print("No files provided, exiting...")
         sys.exit()
-    
-    print(f"{len(args_files)} file(s) provided, {args_files}")
 
     files = []
     for file in args_files:
@@ -18,10 +17,16 @@ def process_files(args_files) -> Iterator[Path]:
         if path.is_file():
             files.append(path)
         else:
-            print(f"{file} is not a file, skipping")
-    
-    print("")
+            print(f"{file} is not a file or directory, skipping")
+
+    if len(files) == 0:
+        print(f"No files found in {args_files}, exiting...")
+        sys.exit()
+    else:
+        print(f"{len(files)} file(s) found, {[str(file) for file in files]}\n")
+
     return files
+
 
 def file_split(files, len_nodes):
     paths = []
@@ -35,13 +40,15 @@ def file_split(files, len_nodes):
             size = str(result)[start+8:end]
 
         split_size = int(int(size)/len_nodes)
-        print(f"{file} has {size} points, Splitting into {len_nodes} files of {split_size} points")
+        print(
+            f"{file} has {size} points, Splitting into {len_nodes} files of {split_size} points")
         split_path = Path.joinpath(file.parents[0], 'split')
         if not split_path.exists():
             os.mkdir(split_path)
         path = Path.joinpath(split_path, file.name)
         paths.append(path)
-        result = subprocess.run(["pdal", "split", "--capacity", str(split_size), file, path])
+        result = subprocess.run(
+            ["pdal", "split", "--capacity", str(split_size), file, path])
         print("")
 
     return paths
