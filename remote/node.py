@@ -49,22 +49,27 @@ class Node:
         print(f"Connecting to node {self.host}...")
         await self.connect()
 
-        if not self.has_pdal():
+        if not await self.has_pdal():
             print(colorstr('red', "Node did not setup correctly"))
             return False
 
         print(colorstr('green', "Connected\n"))
         return True
 
-    def put(self, files: Iterator[Path]):
-        assert self.ssh is not None, "SSH must be intialised before files can be transferred"
+    async def put(self, files: Iterator[Path]):
+        assert self.conn is not None, "SSH must be intialised before files can be transferred"
 
-        self.ssh.exec_command(f'mkdir {self.remote_path}')
-        self.ssh.exec_command(f'mkdir {self.output_path}')
+        await self.conn.run(f'mkdir {self.remote_path}')
+        await self.conn.run(f'mkdir {self.output_path}')
 
-        scp = SCPClient(self.ssh.get_transport())
-        scp.put(files, recursive=True, remote_path=self.remote_path)
-        scp.close()
+        # await self.conn.run(f'mkdir {self.output_path}')
+
+        # shutil
+        # scp uname@server1:/path/to/dir/file[1-2] .
+        await asyncssh.scp(files, (self.conn, self.remote_path), preserve=True, recurse=True)
+        # scp = SCPClient(self.ssh.get_transport())
+        # scp.put(files, recursive=True, remote_path=self.remote_path)
+        # scp.close()
 
         self.files = files
         print(
@@ -85,21 +90,21 @@ class Node:
                 print(errors)
 
     def clean_up(self):
-        assert self.ssh is not None, "SSH must be intialised before files can be cleaned up"
+        assert self.conn is not None, "SSH must be intialised before files can be cleaned up"
 
     def get(self):
-        assert self.ssh is not None, "SSH must be intialised before files can be retrieved"
+        assert self.conn is not None, "SSH must be intialised before files can be retrieved"
         scp = SCPClient(self.ssh.get_transport())
 
     async def connect(self):
         # self.ssh = paramiko.SSHClient()
         # self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         # self.ssh.load_system_host_keys()
-        self.ssh = asyncssh.SSHAgentClient('~')#Path('~/.ssh').expanduser())
-        key_path = Path(self.key)
-        keys = await self.ssh.get_keys()
+        # self.ssh = asyncssh.SSHAgentClient('~')#Path('~/.ssh').expanduser())
+        # key_path = Path(self.key)
+        # keys = await self.ssh.get_keys()
         # self.ssh.
-        print(keys)
+        # print(keys)
 
         # asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])
         # asyncssh.read_authorized_keys([Path('~/.ssh/id_rsa').expanduser()])
@@ -116,11 +121,11 @@ class Node:
         #     self.ssh.connect(self.host,  self.ssh_port,
         #                      self.username, self.password)
 
-    def has_pdal(self):
-        assert self.ssh is not None, "SSH must be intialised before PDAL can be tested for"
+    async def has_pdal(self):
+        assert self.conn is not None, "SSH must be intialised before PDAL can be tested for"
 
         # stdin, stdout, stderr = self.ssh.exec_command('which pdal')
-        result = self.conn.run('which pdal')
+        result = await self.conn.run('which pdal')
         lines = result.stdout
         # lines = stdout.readlines()
         if len(lines) == 0:

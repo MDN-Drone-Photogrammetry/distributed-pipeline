@@ -2,10 +2,8 @@
 import subprocess
 import asyncio
 from utils.timer import Timer
-from utils.file_utils import file_split, process_files
 
-from utils.init_argparse import init_argparse
-from utils.utils import check_requirements, colorstr, get_nodes, transfer_files
+from utils.check_requirements import check_requirements
 
 async def main():
     program_timer = Timer(text="Done! Program completed in {:0.2f} seconds")
@@ -17,6 +15,7 @@ async def main():
     from utils.file_utils import file_split, process_files
     from utils.init_argparse import init_argparse
     from utils.utils import get_nodes, transfer_files
+    from utils.colorstr import colorstr
 
     parser = init_argparse()
 
@@ -27,11 +26,11 @@ async def main():
     nodes = get_nodes()
 
     setup_nodes = []
-    for node in nodes:
-        success = await node.setup()
+    results = await asyncio.gather(*[node.setup() for node in nodes])
 
-        if success:
-            setup_nodes.append(node)
+    for i in range(len(results)):
+        if results[i]:
+            setup_nodes.append(nodes[i])
 
     print("----------------------------------")
     if len(setup_nodes) == 0:
@@ -44,7 +43,7 @@ async def main():
                 f"Not all nodes set up correctly,\ncontinuing with {len(setup_nodes)} node(s): {[node.host for node in setup_nodes]}\n")
 
         paths = file_split(files, len(setup_nodes))
-        transfer_files(files, setup_nodes)
+        await transfer_files(files, setup_nodes)
 
         print("\nStarting remote execution...")
         processing_timer = Timer(text="All remote processing completed in {:0.2f} seconds")

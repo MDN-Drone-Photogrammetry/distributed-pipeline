@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
-from utils.text_utils import colorstr, emojis
+from utils.text_utils import emojis
+from utils.colorstr import colorstr
 
 def check_requirements(requirements='requirements.txt', exclude=()):
     # Check installed dependencies meet requirements (pass *.txt file or list of packages)

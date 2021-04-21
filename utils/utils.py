@@ -105,7 +105,8 @@ def is_tool(name):
     return which(name) is not None
 
 
-def transfer_files(files, nodes):
+async def transfer_files(files, nodes):
+    
     for i in range(len(nodes)):
         split_files = []
         for file in files:
@@ -113,4 +114,4 @@ def transfer_files(files, nodes):
             new_name = f'{name_split[0]}_{i+1}.{name_split[1]}'
             split_path = Path.joinpath(file.parents[0], 'split', new_name)
             split_files.append(str(split_path.absolute()))
-        nodes[i].put(split_files)
+        await nodes[i].put(split_files)
