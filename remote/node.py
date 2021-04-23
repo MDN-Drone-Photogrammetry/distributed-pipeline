@@ -1,9 +1,7 @@
 import configparser
-import os
 from typing import Iterator
 from utils.utils import colorstr
 
-import paramiko
 import asyncssh
 from scp import SCPClient
 
@@ -19,7 +17,6 @@ class Node:
         self.output_path = f"{self.remote_path}output/"
         self.files = None
 
-        self.ssh = None
         self.ssh_port = None
         self.username = None
         self.key = None
@@ -45,7 +42,6 @@ class Node:
             raise Exception()
 
     async def setup(self):
-        print("----------------------------------")
         print(f"Connecting to node {self.host}...")
         await self.connect()
 
@@ -53,7 +49,7 @@ class Node:
             print(colorstr('red', "Node did not setup correctly"))
             return False
 
-        print(colorstr('green', "Connected\n"))
+        print(colorstr('green', f"Connected to node {self.host}"))
         return True
 
     async def put(self, files: Iterator[Path]):
@@ -62,14 +58,8 @@ class Node:
         await self.conn.run(f'mkdir {self.remote_path}')
         await self.conn.run(f'mkdir {self.output_path}')
 
-        # await self.conn.run(f'mkdir {self.output_path}')
 
-        # shutil
-        # scp uname@server1:/path/to/dir/file[1-2] .
         await asyncssh.scp(files, (self.conn, self.remote_path), preserve=True, recurse=True)
-        # scp = SCPClient(self.ssh.get_transport())
-        # scp.put(files, recursive=True, remote_path=self.remote_path)
-        # scp.close()
 
         self.files = files
         print(
@@ -80,10 +70,9 @@ class Node:
         print(f"Executing pdal translate on {self.host}")
         for file in self.files:
             file_name = file.split('/')[-1]
-            stdin, stdout, stderr = self.ssh.exec_command(
+            response = await self.conn.run(
                 f'pdal translate {self.remote_path}{file_name} {self.output_path}{file_name} -f filters.normal')
-            # lines = stdout.readlines()
-            errors = stderr.readlines()
+            errors = response.stderr
             if len(errors) > 0:
                 print(
                     colorstr('red', f"Errors while processing on {self.host}:"))
@@ -108,7 +97,7 @@ class Node:
 
         # asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])
         # asyncssh.read_authorized_keys([Path('~/.ssh/id_rsa').expanduser()])
-        self.conn = await asyncssh.connect(self.host, int(self.port))
+        self.conn = await asyncssh.connect(self.host, int(self.ssh_port))
         # if self.key == None and self.password == None:
         #     self.ssh.connect(self.host,  self.ssh_port, self.username)
         #     self.conn = asyncssh.connect(self.host,  self.ssh_port, self.username)

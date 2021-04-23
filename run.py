@@ -6,9 +6,6 @@ from utils.timer import Timer
 from utils.check_requirements import check_requirements
 
 async def main():
-    program_timer = Timer(text="Done! Program completed in {:0.2f} seconds")
-    program_timer.start()
-
     check_requirements()
 
     # Imports need to be done after the requirements are checked / installed
@@ -16,6 +13,10 @@ async def main():
     from utils.init_argparse import init_argparse
     from utils.utils import get_nodes, transfer_files
     from utils.colorstr import colorstr
+
+    program_timer = Timer(text=colorstr('blue', "Done! Program completed in {:0.2f} seconds"))
+    program_timer.start()
+    print("Starting program timer\n")
 
     parser = init_argparse()
 
@@ -26,6 +27,8 @@ async def main():
     nodes = get_nodes()
 
     setup_nodes = []
+
+    network_timer = Timer()
     results = await asyncio.gather(*[node.setup() for node in nodes])
 
     for i in range(len(results)):
@@ -46,19 +49,10 @@ async def main():
         await transfer_files(files, setup_nodes)
 
         print("\nStarting remote execution...")
-        processing_timer = Timer(text="All remote processing completed in {:0.2f} seconds")
+        processing_timer = Timer(text=colorstr('blue', "All remote processing completed in {:0.2f} seconds"))
         processing_timer.start()
 
-        # await nodes[1].remote_exec()
-        # tasks = []
-        # for node in setup_nodes:
-        #     task = asyncio.create_task(node.remote_exec())
-        #     tasks.append(task)
-        #     # await node.remote_exec()
-        # print('test')
-        # await asyncio.gather(*tasks)
-        await asyncio.wait([node.remote_exec() for node in nodes])
-        # await asyncio.gather(*[node.remote_exec() for node in nodes])
+        await asyncio.gather(*[node.remote_exec() for node in nodes])
         processing_timer.stop()
 
         print("")

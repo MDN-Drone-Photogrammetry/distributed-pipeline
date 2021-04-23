@@ -77,7 +77,6 @@ def get_nodes() -> Iterator[Node]:
     print(f"Found {len(config['NODES'])} nodes in config:\n")
 
     for key in config['NODES']:
-        # if (valid_address(key)): # Don't check valid address as may use the hosts file
         port = config['NODES'][key]
         generated = ''
         if port == '':
@@ -91,8 +90,6 @@ def get_nodes() -> Iterator[Node]:
             print(f"Exception, skipping node {key}")
         print("")
 
-        # else:
-        #     print(f"Address {key} is not valid")
     return nodes
 
 
