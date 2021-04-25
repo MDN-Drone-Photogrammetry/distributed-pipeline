@@ -1,6 +1,9 @@
-
+import os
 import subprocess
 import asyncio
+import shutil
+from utils.file_utils import check_output_dir, merge
+
 from utils.timer import Timer
 
 from utils.check_requirements import check_requirements
@@ -26,6 +29,8 @@ async def main():
 
     nodes = get_nodes()
 
+    args.output, overwrite_output = check_output_dir(args.output)
+    
     setup_nodes = []
 
     network_timer = Timer()
@@ -45,17 +50,24 @@ async def main():
             print(
                 f"Not all nodes set up correctly,\ncontinuing with {len(setup_nodes)} node(s): {[node.host for node in setup_nodes]}\n")
 
-        paths = file_split(files, len(setup_nodes))
+        paths = file_split(files, node_count=len(setup_nodes), tile_length=args.tile_length)
         await transfer_files(files, setup_nodes)
 
         print("\nStarting remote execution...")
         processing_timer = Timer(text=colorstr('blue', "All remote processing completed in {:0.2f} seconds"))
         processing_timer.start()
 
-        await asyncio.gather(*[node.remote_exec() for node in nodes])
+        await asyncio.gather(*[node.remote_exec() for node in setup_nodes])
         processing_timer.stop()
 
-        print("")
+        print("\nRetrieving remote files")
+        if overwrite_output:
+            shutil.rmtree(args.output)
+        os.mkdir('./output')
+        await asyncio.gather(*[node.get(args.output) for node in setup_nodes])
+
+        print("Merging...")
+        merge(args.output, files)
 
         print("Cleaning up...")
         for path in paths:

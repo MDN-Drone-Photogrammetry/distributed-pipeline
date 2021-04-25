@@ -1,4 +1,5 @@
 import configparser
+import os
 from typing import Iterator
 from utils.utils import colorstr
 
@@ -38,12 +39,16 @@ class Node:
             elif "password" in secrets[self.host]:
                 self.password = secrets[self.host]["password"]
         except:
-            print(f"Node {self.host} does not have a valid secret")
-            raise Exception()
+            print(f"Node {self.host} does not have a secret")
 
     async def setup(self):
         print(f"Connecting to node {self.host}...")
-        await self.connect()
+        try:
+            await self.connect()
+        except:
+            print(colorstr('red', "Could not connect to host"))
+            return False
+        
 
         if not await self.has_pdal():
             print(colorstr('red', "Node did not setup correctly"))
@@ -57,7 +62,6 @@ class Node:
 
         await self.conn.run(f'mkdir {self.remote_path}')
         await self.conn.run(f'mkdir {self.output_path}')
-
 
         await asyncssh.scp(files, (self.conn, self.remote_path), preserve=True, recurse=True)
 
@@ -78,37 +82,16 @@ class Node:
                     colorstr('red', f"Errors while processing on {self.host}:"))
                 print(errors)
 
-    def clean_up(self):
+    async def clean_up(self):
         assert self.conn is not None, "SSH must be intialised before files can be cleaned up"
 
-    def get(self):
+    async def get(self, output):
         assert self.conn is not None, "SSH must be intialised before files can be retrieved"
-        scp = SCPClient(self.ssh.get_transport())
+        await asyncssh.scp((self.conn, self.output_path+'/*'), output, preserve=True, recurse=True)
 
     async def connect(self):
-        # self.ssh = paramiko.SSHClient()
-        # self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        # self.ssh.load_system_host_keys()
-        # self.ssh = asyncssh.SSHAgentClient('~')#Path('~/.ssh').expanduser())
-        # key_path = Path(self.key)
-        # keys = await self.ssh.get_keys()
-        # self.ssh.
-        # print(keys)
-
-        # asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])
-        # asyncssh.read_authorized_keys([Path('~/.ssh/id_rsa').expanduser()])
-        self.conn = await asyncssh.connect(self.host, int(self.ssh_port))
-        # if self.key == None and self.password == None:
-        #     self.ssh.connect(self.host,  self.ssh_port, self.username)
-        #     self.conn = asyncssh.connect(self.host,  self.ssh_port, self.username)
-        # if self.key != None:  # Connect to the host preferring keys over passwords
-        #     key_path = Path(self.key)
-        #     key = paramiko.RSAKey.from_private_key_file(key_path.expanduser())
-        #     self.ssh.connect(self.host,  self.ssh_port,
-        #                      self.username, pkey=key)
-        # else:
-        #     self.ssh.connect(self.host,  self.ssh_port,
-        #                      self.username, self.password)
+        asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])
+        self.conn = await asyncssh.connect(self.host, port=int(self.ssh_port) if self.ssh_port else ())
 
     async def has_pdal(self):
         assert self.conn is not None, "SSH must be intialised before PDAL can be tested for"

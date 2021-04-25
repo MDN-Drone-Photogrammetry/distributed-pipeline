@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import subprocess
 import platform
@@ -6,7 +7,7 @@ import configparser
 from typing import Iterator
 from utils.colorstr import colorstr
 from remote.node import Node
-import random
+import sys
 
     # tools = ['pdal']
     # for tool in tools:
@@ -78,12 +79,7 @@ def get_nodes() -> Iterator[Node]:
 
     for key in config['NODES']:
         port = config['NODES'][key]
-        generated = ''
-        if port == '':
-            # Generates a random port in the user assignable range
-            port = random.randint(1024, 49151)
-            generated = ' (generated)'
-        print(f"Node {key} on port {port}{generated}")
+        print(f"Node {key}")
         try:
             nodes.append(Node(key, port))
         except:
@@ -101,14 +97,26 @@ def is_tool(name):
 
     return which(name) is not None
 
+def chunkIt(seq, num):
+    avg = len(seq) / float(num)
+    out = []
+    last = 0.0
 
-async def transfer_files(files, nodes):
-    
+    while last < len(seq):
+        out.append(seq[int(last):int(last + avg)])
+        last += avg
+
+    return out
+
+async def transfer_files(files: Iterator[Path], nodes):
+    split_files = []
+
+    for file in files:
+        path = os.path.join(file.parent, 'split') 
+        splits = [os.path.join(path, f) for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
+        split_files.extend(splits)
+        
+    split_files = chunkIt(split_files, len(nodes))
+
     for i in range(len(nodes)):
-        split_files = []
-        for file in files:
-            name_split = file.name.split('.')
-            new_name = f'{name_split[0]}_{i+1}.{name_split[1]}'
-            split_path = Path.joinpath(file.parents[0], 'split', new_name)
-            split_files.append(str(split_path.absolute()))
-        await nodes[i].put(split_files)
+        await nodes[i].put(split_files[i])
