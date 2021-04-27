@@ -91,6 +91,8 @@ class Node:
 
     async def connect(self):
         asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])
+        if self.key is not None:
+            asyncssh.read_private_key([Path(self.key).expanduser()])
         self.conn = await asyncssh.connect(self.host, port=int(self.ssh_port) if self.ssh_port else ())
 
     async def has_pdal(self):
