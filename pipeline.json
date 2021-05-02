@@ -1,0 +1,14 @@
+{
+    "pipeline": [
+        {
+            "type":"readers.las"
+        },
+        {
+            "type":"filters.normal",
+            "knn":8
+        },
+        {
+            "type":"writers.las"
+        }
+    ]
+}

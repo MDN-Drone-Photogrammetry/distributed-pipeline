@@ -108,7 +108,7 @@ def chunkIt(seq, num):
 
     return out
 
-async def transfer_files(files: Iterator[Path], nodes):
+async def transfer_files(files: Iterator[Path], pipeline, nodes):
     split_files = []
 
     for file in files:
@@ -117,6 +117,9 @@ async def transfer_files(files: Iterator[Path], nodes):
         split_files.extend(splits)
         
     split_files = chunkIt(split_files, len(nodes))
-
+    
     for i in range(len(nodes)):
-        await nodes[i].put(split_files[i])
+        node_files = split_files[i]
+        node_files.append(pipeline)
+
+        await nodes[i].put(node_files)

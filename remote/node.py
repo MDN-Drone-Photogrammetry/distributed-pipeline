@@ -1,10 +1,9 @@
 import configparser
-import os
 from typing import Iterator
 from utils.utils import colorstr
+from utils.timer import Timer
 
 import asyncssh
-from scp import SCPClient
 
 from pathlib import Path
 
@@ -25,7 +24,7 @@ class Node:
 
         self.get_secrets()
 
-        self.conn = None # for asyncSSH
+        self.conn = None  # for asyncSSH
 
     def get_secrets(self):
         secrets = configparser.ConfigParser()
@@ -48,7 +47,6 @@ class Node:
         except:
             print(colorstr('red', "Could not connect to host"))
             return False
-        
 
         if not await self.has_pdal():
             print(colorstr('red', "Node did not setup correctly"))
@@ -69,18 +67,27 @@ class Node:
         print(
             f"Transferred {len(files)} file(s) to {self.host}:~/{self.remote_path}")
 
-    async def remote_exec(self):
-        
-        print(f"Executing pdal translate on {self.host}")
+    async def remote_exec(self, pipeline):
         for file in self.files:
             file_name = file.split('/')[-1]
+            if (file_name == pipeline):
+                continue
+
+            print(f"Started processing {file_name} on {self.host}")
+            file_timer = Timer(name="file", logger=None, )
+            file_timer.start()
+
             response = await self.conn.run(
-                f'pdal translate {self.remote_path}{file_name} {self.output_path}{file_name} -f filters.normal')
+                f'pdal pipeline {self.remote_path}/{pipeline} --readers.las.filename={self.remote_path}{file_name} --writers.las.filename={self.output_path}{file_name}')
+
             errors = response.stderr
             if len(errors) > 0:
                 print(
                     colorstr('red', f"Errors while processing on {self.host}:"))
                 print(errors)
+            time = file_timer.stop()
+            print(
+                f"Finished processing {file_name} on {self.host} in {time:.2f} seconds")
 
     async def clean_up(self):
         assert self.conn is not None, "SSH must be intialised before files can be cleaned up"

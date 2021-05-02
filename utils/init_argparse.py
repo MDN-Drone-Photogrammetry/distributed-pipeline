@@ -29,5 +29,7 @@ def init_argparse() -> argparse.ArgumentParser:
                         help='If provided, splits the pointcloud into tile-length by tile-length tiles')
     # parser.add_argument('--no-convert', action='store_false',
     #                     help='Change ply and las files to laz for faster transfers (default: True)')
+    parser.add_argument('-p','--pipeline', default='pipeline.json',
+                        help='Sets the  (default: pipeline.json)')
 
     return parser
