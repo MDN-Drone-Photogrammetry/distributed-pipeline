@@ -1,0 +1,12 @@
+[
+    "file-input.las",
+    {
+        "type":"filters.crop",
+        "point":"POINT(minx miny)",
+        "distance": length
+    },
+    {
+        "type":"writers.las",
+        "filename":"file-cropped.las"
+    }
+]
