@@ -32,14 +32,14 @@ def crop(files):
                     end = str(result).find(',', start)
                     miny = str(result)[start+6:end]
             
-                length = maxx - minx
+                length = float(maxx) - float(minx)
                 # crop
                 new_length = length*(10/11)
                 print(f"{file} had x-axis length{length}, this is cropped to {new_length} tiles")
 
                 #run crop.json
                 if file == 'crop.json':
-                    with open(file, 'r+') as file:
+                    with open(file, 'w+') as file:
                         content = file.read()
                         file.seek(0)
                         content.replace('minx', minx)
@@ -51,9 +51,9 @@ def crop(files):
                     print("pdal crop done")
 
 
-path = os.getcwd()
-print(path)
-crop(path)
+# path = os.getcwd()
+# print(path)
+crop(['./test.laz'])
     #from pdal info
     #find minx, maxx, miny
     #calculate length
