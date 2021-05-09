@@ -1,0 +1,11 @@
+[
+    "zero",
+    {
+        "type":"filters.crop",
+        "bounds":"([one, two],[three,four],[five, six])"
+    },
+    {
+        "type":"writers.las",
+        "filename":"file_cropped.las"
+    }
+]
