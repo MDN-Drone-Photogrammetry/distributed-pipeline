@@ -2,7 +2,7 @@
     "zero",
     {
         "type":"filters.crop",
-        "bounds":"([one, two],[three,four],[five, six])"
+        "bounds":"(one)"
     },
     {
         "type":"writers.las",

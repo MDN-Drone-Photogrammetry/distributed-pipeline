@@ -6,7 +6,8 @@ from typing import Iterator
 
 import fileinput
 
-# install pdal
+#pdal is needed to run this function
+#this code heavily relies on the output format of "pdal info <>:"
 def crop(files):
     for file in files:
         if file.endswith('.laz'):
@@ -79,7 +80,7 @@ def crop(files):
 
                 # crop
                 new_length = lengthMax*(10/11)
-                print(f"Point cloud in {file} has length{lengthMax}, this is cropped to {new_length}")
+                print(f"Point cloud in {file} has length {lengthMax}, this is cropped to {new_length}")
 
             #replace strings in crop.json
             for file2 in files:
@@ -89,7 +90,7 @@ def crop(files):
                     #subprocess.run(["sed", f"'s/1/{str(minx)} {str(miny)}/g'", file])
                     #subprocess.run(["sed", "-e", "s/1/" + "POINT(" + str(minx) + " " + str(miny) + ")/g", file, "&&", "sed", "-e", "s/2/" + str(new_length) + "/g" , file, "&&", "sed", "-e", "s/0/" + file + "/g", file])
                     subprocess.run(["sed", "-i", "s/zero/" + file + "/", file2])
-                    subprocess.run(["sed", "-i", "s/one/"+"["+str(minx)+","+str(maxx)+"],["+str(miny)+","+str(maxy)+"],["+str(minz)+","+str(minz)+"])/", file2])
+                    subprocess.run(["sed", "-i", "s/one/"+"["+str(minx)+", "+str(float(minx)+float(new_length))+"],["+str(miny)+", "+str(float(miny)+float(new_length))+"],["+str(minz)+", "+str(float(minz)+float(new_length))+"]/", file2])
                     
                     print(file2 + ":")
                     subprocess.run(["cat", file2])
