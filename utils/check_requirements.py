@@ -1,5 +1,8 @@
+import os
 from pathlib import Path
+import shutil
 import subprocess
+
 from utils.text_utils import emojis
 from utils.colorstr import colorstr
 
@@ -33,3 +36,29 @@ def check_requirements(requirements='requirements.txt', exclude=()):
         s = f"{prefix} {n} package{'s' * (n > 1)} updated per {source}\n" \
             f"{prefix} ⚠️ {colorstr('bold', 'Restart runtime or rerun command for updates to take effect')}\n"
         print(emojis(s))  # emoji-safe
+
+def install_lastools(force=False):
+    import wget
+    import zipfile
+    LASTOOLS = 'LAStools_210330'
+
+    if not os.path.isdir('./LAStools') or force:
+        if force:
+            shutil.rmtree('./LAStools')
+            print('Reinstalling lastools...')    
+        else:
+            print('Lastools not found installing...')
+
+        if not os.path.isfile(f'{LASTOOLS}.zip'):
+            filename = wget.download(f'https://lastools.github.io/download/{LASTOOLS}.zip')
+        else:
+            filename = f'{LASTOOLS}.zip'
+
+        with zipfile.ZipFile(filename,"r") as zip_ref:
+            zip_ref.extractall("./")
+
+        output = subprocess.Popen("make", cwd="./LAStools", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            print(output.returncode)
+        except:
+            print(f'Error installing lastools, {output.stderr}')

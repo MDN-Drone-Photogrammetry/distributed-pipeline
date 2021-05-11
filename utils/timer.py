@@ -41,5 +41,5 @@ class Timer:
             self.logger(self.text.format(elapsed_time))
         if self.name:
             self.timers[self.name] += elapsed_time
-
+        
         return elapsed_time

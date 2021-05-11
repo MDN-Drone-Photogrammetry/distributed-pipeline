@@ -1,4 +1,8 @@
 [NODES]
-ext-alta:
-ext-chamonix:
-ext-whistler:
+int-alta:
+int-chamonix:
+int-whistler:
+int-hakuba:
+int-laax:
+int-jacksonhole:
+int-laclusaz:

@@ -50,10 +50,10 @@ def crop(files):
                     subprocess.run(["pdal", "pipeline", file])
                     print("pdal crop done")
 
-
 # path = os.getcwd()
 # print(path)
-crop(['./test.laz'])
+if __name__ == "__main__":
+    crop(['./test.laz'])
     #from pdal info
     #find minx, maxx, miny
     #calculate length

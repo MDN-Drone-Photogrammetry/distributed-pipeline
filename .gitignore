@@ -4,3 +4,12 @@ secret
 __pycache__/
 
 .vscode/
+LAStools/
+
+point_clouds/
+
+*.zip
+
+t.laz
+
+benchmark.csv

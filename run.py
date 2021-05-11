@@ -1,66 +1,130 @@
+from argparse import Namespace
 import os
-import subprocess
 import asyncio
 import shutil
-from pathlib import Path
-from utils.file_utils import check_output_dir, merge
+import csv
+import sys
 
 from utils.timer import Timer
 
 from utils.check_requirements import check_requirements
 
 
-async def main():
+async def init():
     check_requirements()
 
+    # paths = []
     # Imports need to be done after the requirements are checked / installed
-    from utils.file_utils import file_split, process_files
     from utils.init_argparse import init_argparse
-    from utils.utils import get_nodes, transfer_files
+    from utils.utils import get_nodes
     from utils.colorstr import colorstr
+    from utils.timer import Timer
+    from utils.check_requirements import install_lastools
+    from utils.file_utils import cleanup
 
-    program_timer = Timer(text=colorstr(
-        'blue', "Done! Program completed in {:0.2f} seconds"))
-    program_timer.start()
-    print("Starting program timer\n")
+    # import atexit
 
+    # atexit.register(cleanup(paths))
+
+    # LAStools is required to split pointclouds on devices with lower memory
+    install_lastools()
+
+    benchmark_timer = Timer(text=colorstr('yellow', 'bold',
+                                          "Benchmark completed in {:0.2f} seconds, results saved to benchmark.csv"))
+    benchmark_timer.start()
     parser = init_argparse()
 
     args = parser.parse_args()
 
+    if args.cloud_compare:
+        raise NotImplementedError(
+            "Cloud compare functionality not yet implemented")
+
+    if args.benchmark:
+        nodes = get_nodes()
+        file = open('benchmark.csv', 'w', newline='')
+        writer = csv.writer(file)
+        writer.writerow(["Node Count", "Remote Files", "Program Time", "Setup Time",
+                         "Split Time", "Transfer Time", "Processing Time", "Retrieval Time", "Merge Time"])
+        file.flush()
+        for i in range(1, len(nodes)+1):
+            print(colorstr('yellow', 'bold',
+                           f"Starting benchmark loop {i} of {len(nodes)}"))
+
+            timers, file_count = await main(args, main_nodes=nodes[:i])
+            writer.writerow([i, file_count, timers["program_timer"], timers["setup_timer"], timers["split_timer"],
+                             timers["transfer_timer"], timers["processing_timer"], timers["retrieval_timer"], timers["merge_timer"]])
+            file.flush()
+        file.close()
+        benchmark_timer.stop()
+
+    else:
+        await main(args)
+
+
+async def main(args: Namespace, main_nodes=None):
+
+    from utils.file_utils import file_split, process_files, merge, check_output_dir
+    from utils.utils import get_nodes, transfer_files
+    from utils.colorstr import colorstr
+
+    timers = {}
+
+    program_timer = Timer(text=colorstr(
+        'blue', 'bold', "Done! Program completed in {:0.2f} seconds"))
+    program_timer.start()
+    print("Starting program timer\n")
+
     files = process_files(args.files)
 
-    nodes = get_nodes()
+    if main_nodes is None:
+        nodes = get_nodes()
+    else:
+        nodes = main_nodes
 
-    args.output, overwrite_output = check_output_dir(args.output)
+    if args.benchmark:
+        overwrite_output = True
+    else:
+        args.output, overwrite_output = check_output_dir(args.output)
 
     setup_nodes = []
 
-    network_timer = Timer("network", logger=None)
-    network_timer.start()
+    setup_timer = Timer(
+        text=colorstr('blue', "Setup of nodes completed in {:.2f} seconds"))
+    setup_timer.start()
     results = await asyncio.gather(*[node.setup() for node in nodes])
-    network_timer.stop()
+    timers["setup_timer"] = setup_timer.stop()
 
     for i in range(len(results)):
         if results[i]:
             setup_nodes.append(nodes[i])
-    
+
     print("----------------------------------")
     if len(setup_nodes) == 0:
         print(
-            f"\n{colorstr('red', 'bold', 'No nodes where set up correctly, exiting')}\n")
-
+            colorstr('red', 'bold', '\nNo nodes where set up correctly, exiting\n'))
     else:
         if len(setup_nodes) != len(nodes):
+            if (args.benchmark):
+                print(colorstr(
+                    'red', 'bold', 'Cannot benchmark without all available nodes, please check your node setup'))
+                sys.exit(1)
             print(
                 f"Not all nodes set up correctly,\ncontinuing with {len(setup_nodes)} node(s): {[node.host for node in setup_nodes]}\n")
 
+        print('Splitting files locally...')
+        split_timer = Timer(text=colorstr(
+            'blue', "File(s) split in {:0.2f} seconds"))
+        split_timer.start()
         paths = file_split(files, node_count=len(
             setup_nodes), tile_length=args.tile_length)
+        timers["split_timer"] = split_timer.stop()
 
-        network_timer.start()
+        transfer_timer = Timer(
+            text=colorstr('blue', "Copying from local to nodes completed in {:.2f} seconds"))
+        transfer_timer.start()
         await transfer_files(files, args.pipeline, setup_nodes)
-        network_timer.stop()
+        timers["transfer_timer"] = transfer_timer.stop()
 
         pipeline = args.pipeline.split('/')[-1]
 
@@ -69,26 +133,29 @@ async def main():
             'blue', "All remote processing completed in {:0.2f} seconds"))
         processing_timer.start()
         await asyncio.gather(*[node.remote_exec(pipeline) for node in setup_nodes])
-        processing_timer.stop()
+        timers["processing_timer"] = processing_timer.stop()
 
-        print("\nRetrieving remote files")
+        print("\nRetrieving remote files...")
         if overwrite_output:
             shutil.rmtree(args.output)
         os.mkdir('./output')
-        network_timer.start()
+
+        retrieval_timer = Timer(
+            text=colorstr('blue', "Copying from nodes to local completed in {:.2f} seconds"))
+        retrieval_timer.start()
         await asyncio.gather(*[node.get(args.output) for node in setup_nodes])
-        network_time = network_timer.stop()
+        timers["retrieval_timer"] = retrieval_timer.stop()
 
         print("Merging...")
+        merge_timer = Timer(text=colorstr(
+            'blue', "File(s) merged in {:0.2f} seconds"))
+        merge_timer.start()
         merge(args.output, files)
+        timers["merge_timer"] = merge_timer.stop()
 
-        print("Cleaning up...")
-        for path in paths:
-            subprocess.run(["rm", "-r", path.parents[0]])
+        timers["program_timer"] = program_timer.stop()
 
-        print(f"All networking actions completed in {network_time:.2f} seconds")
-        program_timer.stop()
-
+        return (timers, len(paths))
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    asyncio.run(init())
