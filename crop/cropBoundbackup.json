@@ -2,8 +2,7 @@
     "zero",
     {
         "type":"filters.crop",
-        "point":"one",
-        "distance": two
+        "bounds":"(one)"
     },
     {
         "type":"writers.las",
