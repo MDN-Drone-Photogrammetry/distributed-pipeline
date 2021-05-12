@@ -40,7 +40,7 @@ class Node:
         except:
             print(f"Node {self.host} does not have a secret")
 
-    async def setup(self):
+    async def setup(self, use_cloud_compare=False):
         print(f"Connecting to node {self.host}...")
         try:
             await self.connect()
@@ -48,9 +48,17 @@ class Node:
             print(colorstr('red', "Could not connect to host"))
             return False
 
-        if not await self.has_pdal():
-            print(colorstr('red', "Node did not setup correctly"))
-            return False
+        if use_cloud_compare:
+            if not await self.has_cloud_compare():
+                print(colorstr('red', "Node did not setup correctly"))
+                return False        
+        else:
+            if not await self.has_pdal():
+                print(colorstr('red', "Node did not setup correctly"))
+                return False
+
+        # Clean up the node from previous runs, get will retreive all files from
+        await self.clean_up()
 
         print(colorstr('green', f"Connected to node {self.host}"))
         return True
@@ -67,7 +75,7 @@ class Node:
         print(
             f"Transferred {len(files)} file(s) to {self.host}:~/{self.remote_path}")
 
-    async def remote_exec(self, pipeline):
+    async def remote_exec(self, pipeline=None, use_cloud_compare=False):
         for file in self.files:
             file_name = file.split('/')[-1]
             if (file_name == pipeline):
@@ -77,8 +85,12 @@ class Node:
             file_timer = Timer(name="file", logger=None, )
             file_timer.start()
 
-            response = await self.conn.run(
-                f'pdal pipeline {self.remote_path}/{pipeline} --readers.las.filename={self.remote_path}{file_name} --writers.las.filename={self.output_path}{file_name}')
+            if use_cloud_compare:
+                response = await self.conn.run(
+                    f'xvfb-run cloudcompare.CloudCompare -SILENT  -O {self.remote_path}{file_name} -COMPUTE_NORMALS -CURV GAUSS 0.25')
+            else:
+                response = await self.conn.run(
+                    f'pdal pipeline {self.remote_path}/{pipeline} --readers.las.filename={self.remote_path}{file_name} --writers.las.filename={self.output_path}{file_name}')
 
             errors = response.stderr
             if len(errors) > 0:
@@ -91,6 +103,7 @@ class Node:
 
     async def clean_up(self):
         assert self.conn is not None, "SSH must be intialised before files can be cleaned up"
+        result = await self.conn.run(f'rm -r {self.output_path}')
 
     async def get(self, output):
         assert self.conn is not None, "SSH must be intialised before files can be retrieved"
@@ -115,3 +128,26 @@ class Node:
             return False
         else:
             return True
+
+    async def has_cloud_compare(self):
+        assert self.conn is not None, "SSH must be intialised before PDAL can be tested for"
+
+        # stdin, stdout, stderr = self.ssh.exec_command('which pdal')
+        result = await self.conn.run('which cloudcompare.CloudCompare')
+        cloudcompare = len(result.stdout) > 0
+        result = await self.conn.run('which xvfb-run')
+        xvfb = len(result.stdout) > 0
+
+        success = True
+        # lines = stdout.readlines()
+        if not cloudcompare:
+            print(
+                f"CloudCompare not installed, please install on the node machine with (debian)\n\n{colorstr('bold','sudo snap install cloudcompare')}\n")
+            success =  False
+        
+        if not xvfb:
+            print(
+                f"xvfb not installed, please install on the node machine with (debian)\n\n{colorstr('bold','sudo apt-get install xvfb')}\n")
+            success =  False
+
+        return success
