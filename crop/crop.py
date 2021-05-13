@@ -96,11 +96,17 @@ def crop(files):
                     subprocess.run(["cat", file2])
 
                     # run the crop
-                    subprocess.run(["pdal", "pipeline", file])
-                    print("pdal crop done")
+                    #subprocess.run(["pdal", "pipeline", file])
+                    #print("pdal crop done")
 
                     #recreate crop.json to be back at original state
-                    subprocess.run(["rm", "cropBound.json"])
-                    subprocess.run(["cp", "cropBoundbackup.json", "cropBound.json"])
+                    #subprocess.run(["rm", "cropBound.json"])
+                    #subprocess.run(["cp", "cropBoundbackup.json", "cropBound.json"])
 
 crop(['test.laz', 'cropBound.json'])
+subprocess.run(["pdal", "pipeline", 'cropBound.json'])
+print("pdal crop done")
+
+#recreate crop.json to be back at original state
+subprocess.run(["rm", "cropBound.json"])
+subprocess.run(["cp", "cropBoundbackup.json", "cropBound.json"])
