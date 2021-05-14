@@ -58,6 +58,7 @@ def install_lastools(force=False):
             zip_ref.extractall("./")
 
         output = subprocess.Popen("make", cwd="./LAStools", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        output.wait()
         try:
             print(output.returncode)
         except:

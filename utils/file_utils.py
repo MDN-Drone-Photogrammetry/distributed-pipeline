@@ -32,7 +32,7 @@ def process_files(args_files) -> Iterator[Path]:
     return files
 
 
-def file_split(files: Iterable[Path], node_count=None, tile_length=None, use_lastools=True):
+def file_split(files: Iterable[Path], node_count: int = None, tile_length:int =None, use_lastools=True):
     paths = []
 
     for file in files:
