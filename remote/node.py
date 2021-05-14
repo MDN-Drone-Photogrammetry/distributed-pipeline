@@ -60,6 +60,7 @@ class Node:
         # Clean up the node from previous runs, get will retreive all files from
         await self.clean_up()
 
+
         print(colorstr('green', f"Connected to node {self.host}"))
         return True
 
@@ -103,11 +104,13 @@ class Node:
 
     async def clean_up(self):
         assert self.conn is not None, "SSH must be intialised before files can be cleaned up"
-        result = await self.conn.run(f'rm -r {self.output_path}')
+        result = await self.conn.run(f'rm -r {self.remote_path}')
 
     async def get(self, output):
         assert self.conn is not None, "SSH must be intialised before files can be retrieved"
-        await asyncssh.scp((self.conn, self.output_path+'/*'), output, preserve=True, recurse=True)
+        # if self.output_path[-1]
+        print(self.output_path)
+        await asyncssh.scp((self.conn, self.output_path+'*'), output, preserve=True, recurse=True)
 
     async def connect(self):
         asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])

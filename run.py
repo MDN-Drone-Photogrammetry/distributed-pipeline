@@ -118,6 +118,9 @@ async def main(args: Namespace, main_nodes=None):
         timers["split_timer"] = split_timer.stop()
 
         # Now that the splits have been completed, we want to register a cleanup function in case the function fails
+        # If loops have occured previously we want to unregister the previous clean up function
+        if args.benchmark and len(main_nodes) > 1:
+            atexit.unregister(clean_up)
         atexit.register(clean_up, paths, nodes)
 
         print('Copying files to remote nodes...')
