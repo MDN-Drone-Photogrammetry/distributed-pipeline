@@ -13,18 +13,13 @@ from utils.check_requirements import check_requirements
 async def init():
     check_requirements()
 
-    # paths = []
     # Imports need to be done after the requirements are checked / installed
     from utils.init_argparse import init_argparse
     from utils.utils import get_nodes
     from utils.colorstr import colorstr
     from utils.timer import Timer
     from utils.check_requirements import install_lastools
-    from utils.file_utils import cleanup
-
-    # import atexit
-
-    # atexit.register(cleanup(paths))
+    from utils.clean_up import clean_up
 
     # LAStools is required to split pointclouds on devices with lower memory
     install_lastools()
@@ -67,6 +62,8 @@ async def main(args: Namespace, main_nodes=None):
     from utils.file_utils import file_split, process_files, merge, check_output_dir
     from utils.utils import get_nodes, transfer_files
     from utils.colorstr import colorstr
+    from utils.clean_up import clean_up, async_clean_up
+    import atexit
 
     timers = {}
 
@@ -120,6 +117,10 @@ async def main(args: Namespace, main_nodes=None):
             setup_nodes), tile_length=args.tile_length)
         timers["split_timer"] = split_timer.stop()
 
+        # Now that the splits have been completed, we want to register a cleanup function in case the function fails
+        atexit.register(clean_up, paths, nodes)
+
+        print('Copying files to remote nodes...')
         transfer_timer = Timer(
             text=colorstr('blue', "Copying from local to nodes completed in {:.2f} seconds"))
         transfer_timer.start()
@@ -138,7 +139,9 @@ async def main(args: Namespace, main_nodes=None):
         print("\nRetrieving remote files...")
         if overwrite_output:
             shutil.rmtree(args.output)
-        os.mkdir('./output')
+
+        # If the directory already exists, os.mkdir will silently fail
+        os.mkdir(args.output)
 
         retrieval_timer = Timer(
             text=colorstr('blue', "Copying from nodes to local completed in {:.2f} seconds"))
@@ -155,7 +158,15 @@ async def main(args: Namespace, main_nodes=None):
 
         timers["program_timer"] = program_timer.stop()
 
+        # Cleanup in between runs instead of just at exit
+        if args.benchmark:
+            await async_clean_up(paths, nodes)
+        
         return (timers, len(paths))
 
 if __name__ == '__main__':
-    asyncio.run(init())
+    try:
+        asyncio.run(init())
+    except KeyboardInterrupt:
+        print('Cancelling')
+        sys.exit(1)

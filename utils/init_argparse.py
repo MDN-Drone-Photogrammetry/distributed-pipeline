@@ -36,5 +36,4 @@ def init_argparse() -> argparse.ArgumentParser:
     parser.add_argument('--benchmark', action='store_true',
                         help='Loops through all available nodes and creates a report (default: False)')
 
-    
     return parser

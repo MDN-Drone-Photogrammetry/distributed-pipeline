@@ -128,17 +128,9 @@ def merge(output, files: Iterator[Path]):
                 files_to_merge.append(os.path.join(output, output_file))
 
         output_path = os.path.join(output, file.name)
-        if len(output_files) == 1:
-            shutil.copyfile(output_files[0], output_path)
-
-        else:
+        # If there is only a single file for the point cloud there is no further action rqeuired
+        if len(output_files) is not 1:
             subprocess.run(
                 ["pdal", "merge", *files_to_merge, output_path])
-        for file_to_remove in files_to_merge:
-            os.remove(file_to_remove)
-
-def cleanup(paths):
-    print("Cleaning up...")
-    if len(paths) > 0:
-        for path in paths:
-            subprocess.run(["rm", "-r", path.parents[0]])
+            for file_to_remove in files_to_merge:
+                os.remove(file_to_remove)
