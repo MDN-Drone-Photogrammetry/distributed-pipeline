@@ -42,6 +42,8 @@ class Node:
 
     async def setup(self, use_cloud_compare=False):
         print(f"Connecting to node {self.host}...")
+        self.use_cloud_compare = use_cloud_compare
+
         try:
             await self.connect()
         except:
@@ -76,19 +78,21 @@ class Node:
         print(
             f"Transferred {len(files)} file(s) to {self.host}:~/{self.remote_path}")
 
-    async def remote_exec(self, pipeline=None, use_cloud_compare=False):
+    async def remote_exec(self, pipeline=None):
         for file in self.files:
             file_name = file.split('/')[-1]
             if (file_name == pipeline):
                 continue
 
-            print(f"Started processing {file_name} on {self.host}")
+            print(f"Started processing {file_name} on {self.host} with {'CloudCompare' if self.use_cloud_compare else 'PDAL'}")
             file_timer = Timer(name="file", logger=None, )
             file_timer.start()
 
-            if use_cloud_compare:
+            if self.use_cloud_compare:
                 response = await self.conn.run(
                     f'xvfb-run cloudcompare.CloudCompare -SILENT  -O {self.remote_path}{file_name} -COMPUTE_NORMALS -CURV GAUSS 0.25')
+                await self.conn.run(
+                    f'mv {self.remote_path}{file_name} {self.output_path}{file_name}')       
             else:
                 response = await self.conn.run(
                     f'pdal pipeline {self.remote_path}/{pipeline} --readers.las.filename={self.remote_path}{file_name} --writers.las.filename={self.output_path}{file_name}')
@@ -108,8 +112,6 @@ class Node:
 
     async def get(self, output):
         assert self.conn is not None, "SSH must be intialised before files can be retrieved"
-        # if self.output_path[-1]
-        print(self.output_path)
         await asyncssh.scp((self.conn, self.output_path+'*'), output, preserve=True, recurse=True)
 
     async def connect(self):
@@ -127,7 +129,7 @@ class Node:
         # lines = stdout.readlines()
         if len(lines) == 0:
             print(
-                f"PDAL not installed, please install on the node machine with (debian)\n\n{colorstr('bold','sudo apt install pdal')}\n")
+                f"PDAL not installed on {self.host}, please install on the node machine with (debian)\n\n{colorstr('bold','sudo apt install pdal')}\n")
             return False
         else:
             return True
@@ -145,12 +147,12 @@ class Node:
         # lines = stdout.readlines()
         if not cloudcompare:
             print(
-                f"CloudCompare not installed, please install on the node machine with (debian)\n\n{colorstr('bold','sudo snap install cloudcompare')}\n")
+                f"CloudCompare not installed on {self.host}, please install on the node machine with (debian)\n\n{colorstr('bold','sudo snap install cloudcompare')}\n")
             success =  False
         
         if not xvfb:
             print(
-                f"xvfb not installed, please install on the node machine with (debian)\n\n{colorstr('bold','sudo apt-get install xvfb')}\n")
+                f"xvfb not installed on {self.host}, please install on the node machine with (debian)\n\n{colorstr('bold','sudo apt-get install xvfb')}\n")
             success =  False
 
         return success

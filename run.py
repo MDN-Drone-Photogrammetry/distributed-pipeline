@@ -31,10 +31,6 @@ async def init():
 
     args = parser.parse_args()
 
-    if args.cloud_compare:
-        raise NotImplementedError(
-            "Cloud compare functionality not yet implemented")
-
     if args.benchmark:
         nodes = get_nodes()
         file = open('benchmark.csv', 'w', newline='')
@@ -89,7 +85,7 @@ async def main(args: Namespace, main_nodes=None):
     setup_timer = Timer(
         text=colorstr('blue', "Setup of nodes completed in {:.2f} seconds"))
     setup_timer.start()
-    results = await asyncio.gather(*[node.setup() for node in nodes])
+    results = await asyncio.gather(*[node.setup(use_cloud_compare=args.cloud_compare) for node in nodes])
     timers["setup_timer"] = setup_timer.stop()
 
     for i in range(len(results)):
@@ -121,7 +117,7 @@ async def main(args: Namespace, main_nodes=None):
         # If loops have occured previously we want to unregister the previous clean up function
         if args.benchmark and len(main_nodes) > 1:
             atexit.unregister(clean_up)
-        atexit.register(clean_up, paths, nodes)
+        atexit.register(clean_up, paths, setup_nodes)
 
         print('Copying files to remote nodes...')
         transfer_timer = Timer(

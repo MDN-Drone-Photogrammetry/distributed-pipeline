@@ -57,6 +57,8 @@ def install_lastools(force=False):
         with zipfile.ZipFile(filename,"r") as zip_ref:
             zip_ref.extractall("./")
 
+        shutil.rmtree(filename)
+
         output = subprocess.Popen("make", cwd="./LAStools", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         output.wait()
         try:
