@@ -69,16 +69,15 @@ def crop(files):
                 lengthZ = float(maxz) - float(minz)
                 lengthMax = 0
                 # check which axis of the point cloud has the longest length
-                if lengthX > lengthY and lengthX > lengthZ:
+                if lengthX > lengthY:
                     lengthMax = lengthX
-                elif lengthY > lengthZ:
-                    lengthMax = lengthY 
                 else:
-                    lengthMax = lengthZ
+                    lengthMax = lengthY
 
-                # define the length to be croped 
+                # define the length to be croped, 
+                # length to crop depends on split function
                 new_length = lengthMax*(10/11)
-                print(f"Point cloud in {file} has length {lengthMax}, this is cropped to {new_length}")
+                print(f"Point cloud in {file} is a tile of {lengthMax} length, this is cropped to {new_length}")
 
             #replace strings in cropBound.json
             for file2 in files:
@@ -87,7 +86,7 @@ def crop(files):
 
                     
                     subprocess.run(["sed", "-i", "s/zero/" + file + "/", file2])
-                    subprocess.run(["sed", "-i", "s/one/"+"["+str(minx)+", "+str(float(minx)+float(new_length))+"],["+str(miny)+", "+str(float(miny)+float(new_length))+"],["+str(minz)+", "+str(float(minz)+float(new_length))+"]/", file2])
+                    subprocess.run(["sed", "-i", "s/one/"+"["+str(minx)+", "+str(float(minx)+float(new_length))+"],["+str(miny)+", "+str(float(miny)+float(new_length))+"],["+str(minz)+", "+str(maxz)+"]/", file2])
                     
                     print(file2 + ":")
                     subprocess.run(["cat", file2])
