@@ -9,14 +9,6 @@ from utils.colorstr import colorstr
 from remote.node import Node
 import sys
 
-    # tools = ['pdal']
-    # for tool in tools:
-    #     check = is_tool(tool)
-    #     if not check:
-    #         print(
-    #             f"{tool} must be installed to continue, this can be installed using\n\nsudo apt install {tool}")
-    #         sys.exit()
-
 def check_requirements(requirements='requirements.txt', exclude=()):
     # Check installed dependencies meet requirements (pass *.txt file or list of packages)
     import pkg_resources as pkg

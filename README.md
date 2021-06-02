@@ -1,41 +1,74 @@
-# distributed-pipeline
+# Distributed Pipeline
 
 ## Quickstart
 
-### 1. Install PDAL on main machine
-
+### 1. Set up nodes in `config`
+Add nodes as `host:port`
 ```
-sudo apt install pdal
+[NODES]
+192.168.1.2: 6938
 ```
 
-### 2. Repeat above for any node machines
+### 2. Add login details in `secret`
+For each node in `config` provide login details
+```
+[192.168.1.2]
+username: ben
+password: ********
+```
 
-### 3. Modify `config`
+### 3. Run 
+Run the program and follow any installation prompts
+```
+python3 run.py point_clouds/test.laz
+```
 
-Change the hosts and ports to your node machines. Ports are optional as they are used with RPyC.
+## Config
 
+Config contains all your nodes in the form `host:port`. Known hosts can be added as well and are pulled from `~/.ssh/config`. If no port is given and the host is known, it will use the known port. Otherwise if no port is given it will default to `22`.
 ```
 [NODES]
 192.168.1.2: 6938
 192.168.1.19: 8620
+my_known_host:
 ```
 
-### 4. Create a `secret` file
+## Secret
 
-Create a secret file to include the login details to your node machine. If the machine is already in your hosts file and the key-pair added to the current machine, the address is all that is required.
+If the client key is stored in a known location such as `~/.ssh/id_rsa` this step can be skipped.
+
+The username will default to the current session user, providing a username in the secret file will override using the session user.
+
+Either one of password or key should be provided.
 
 ```
 [192.168.1.2]
-ssh-port: 2940
 username: ben
 password: ********
 key: ~/.ssh/id_rsa
 ```
 
-### 5. Run!
+## Run 
 
-Run the
+Several libraries are required to successfully run the program. It will try and install them automatically if they are not already present. If PDAL / CloudCompare & XVFB are not installed on the remote machines, the program will exit and provide the required syntax to install them.
+
+The following options are available when running the program
 
 ```
-python3 run.py point_clouds/*
+positional arguments:
+  files
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
+  --config CONFIG       Provide an alternative config file (default: config)
+  --secret SECRET       Provide an alternative secret file (default: secret)
+  -o OUTPUT, --output OUTPUT
+                        Output directory, will overwrite existing directory (default: ./output/)
+  --tile-length TILE_LENGTH
+                        If provided, splits the pointcloud into tile-length by tile-length tiles
+  --cloud-compare       Use cloud compare headless to instead of pdal (default: False)
+  -p PIPELINE, --pipeline PIPELINE
+                        Sets the (default: pipeline.json)
+  --benchmark           Loops through all available nodes and creates a report (default: False)
 ```

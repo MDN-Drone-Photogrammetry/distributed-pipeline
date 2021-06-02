@@ -6,6 +6,8 @@ import subprocess
 from utils.text_utils import emojis
 from utils.colorstr import colorstr
 
+LASTOOLS = 'LAStools_210330'
+
 def check_requirements(requirements='requirements.txt', exclude=()):
     # Check installed dependencies meet requirements (pass *.txt file or list of packages)
     import pkg_resources as pkg
@@ -40,7 +42,6 @@ def check_requirements(requirements='requirements.txt', exclude=()):
 def install_lastools(force=False):
     import wget
     import zipfile
-    LASTOOLS = 'LAStools_210330'
 
     if not os.path.isdir('./LAStools') or force:
         if force:

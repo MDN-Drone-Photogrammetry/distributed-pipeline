@@ -6,7 +6,7 @@ from utils.timer import Timer
 import asyncssh
 
 from pathlib import Path
-
+import os
 
 class Node:
     def __init__(self, host, port):
@@ -17,7 +17,6 @@ class Node:
         self.output_path = f"{self.remote_path}output/"
         self.files = None
 
-        self.ssh_port = None
         self.username = None
         self.key = None
         self.password = None
@@ -29,26 +28,34 @@ class Node:
     def get_secrets(self):
         secrets = configparser.ConfigParser()
         secrets.read('secret')
+        
+        if  self.host not in secrets:
+            print(f"Node {self.host} does not have a secret")
+            return
 
         try:
-            self.ssh_port = secrets[self.host]["ssh-port"]
+            if "port" in secrets[self.host]:
+                self.ssh_port = secrets[self.host]["port"]
+            else:
+                self.ssh_port = 22
+
             self.username = secrets[self.host]["username"]
             if "key" in secrets[self.host]:
                 self.key = secrets[self.host]["key"]
             elif "password" in secrets[self.host]:
                 self.password = secrets[self.host]["password"]
         except:
-            print(f"Node {self.host} does not have a secret")
+            print(f"Node {self.host} secret could not be read properly")
 
     async def setup(self, use_cloud_compare=False):
         print(f"Connecting to node {self.host}...")
         self.use_cloud_compare = use_cloud_compare
 
-        try:
-            await self.connect()
-        except:
-            print(colorstr('red', "Could not connect to host"))
-            return False
+        # try:
+        await self.connect()
+        # except:
+        #     print(colorstr('red', "Could not connect to host"))
+        #     return False
 
         if use_cloud_compare:
             if not await self.has_cloud_compare():
@@ -115,10 +122,17 @@ class Node:
         await asyncssh.scp((self.conn, self.output_path+'*'), output, preserve=True, recurse=True)
 
     async def connect(self):
-        asyncssh.read_known_hosts([Path('~/.ssh/config').expanduser()])
+        known_hosts = Path.home().joinpath('.ssh','config')
+        asyncssh.read_known_hosts([known_hosts])
+        
         if self.key is not None:
-            asyncssh.read_private_key([Path(self.key).expanduser()])
-        self.conn = await asyncssh.connect(self.host, port=int(self.ssh_port) if self.ssh_port else ())
+            key = asyncssh.read_private_key(Path(self.key).expanduser())
+        
+        port = int(self.port) if self.port is not '' else ()
+        username = self.username if self.username is not None else ()
+        keys = [key] if self.key is not None else ()
+
+        self.conn = await asyncssh.connect(self.host, username=username, port=port, client_keys=keys)
 
     async def has_pdal(self):
         assert self.conn is not None, "SSH must be intialised before PDAL can be tested for"
@@ -137,14 +151,12 @@ class Node:
     async def has_cloud_compare(self):
         assert self.conn is not None, "SSH must be intialised before PDAL can be tested for"
 
-        # stdin, stdout, stderr = self.ssh.exec_command('which pdal')
         result = await self.conn.run('which cloudcompare.CloudCompare')
         cloudcompare = len(result.stdout) > 0
         result = await self.conn.run('which xvfb-run')
         xvfb = len(result.stdout) > 0
 
         success = True
-        # lines = stdout.readlines()
         if not cloudcompare:
             print(
                 f"CloudCompare not installed on {self.host}, please install on the node machine with (debian)\n\n{colorstr('bold','sudo snap install cloudcompare')}\n")

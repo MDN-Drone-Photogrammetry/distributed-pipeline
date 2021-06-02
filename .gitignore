@@ -13,3 +13,6 @@ point_clouds/
 t.laz
 
 benchmark.csv
+
+output/20161212-011658_Lawless_RAW_PointCloud.las
+config

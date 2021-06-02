@@ -31,6 +31,8 @@ async def init():
 
     args = parser.parse_args()
 
+    # Benchmarking will take all available nodes N and run the main loop for 1 to N nodes
+    # It will also output the benchmarking results to a CSV file 'benchmark.csv' 
     if args.benchmark:
         nodes = get_nodes()
         file = open('benchmark.csv', 'w', newline='')
@@ -135,6 +137,8 @@ async def main(args: Namespace, main_nodes=None):
         await asyncio.gather(*[node.remote_exec(pipeline) for node in setup_nodes])
         timers["processing_timer"] = processing_timer.stop()
 
+        # If the user has confirmed they want to overwrite output, the folder will be recursively removed
+        # This is done at the end 
         print("\nRetrieving remote files...")
         if overwrite_output:
             shutil.rmtree(args.output)
@@ -165,7 +169,9 @@ async def main(args: Namespace, main_nodes=None):
 
 if __name__ == '__main__':
     try:
+        # An async functions is requried to wrap any async calls which is why we use an init functions instead of initialising here.
         asyncio.run(init())
+        # Handling keyboard interupts prevents unwanted output when cancelling the operation.
     except KeyboardInterrupt:
         print('Cancelling')
         sys.exit(1)
